@@ -14103,6 +14103,14 @@ static bool ggml_backend_vk_cpy_tensor_async(ggml_backend_t backend_src, ggml_ba
 
                 GGML_LOG_DEBUG("ggml_vulkan: cross-device import succeeded\n");
 
+                // Work around drivers that don't close the fd after import
+                // (spec says ownership transfers to the driver, but some leak it)
+#if !defined(_WIN32)
+                if (sync_fd >= 0) {
+                    close(sync_fd);
+                }
+#endif
+
                 dst_compute_ctx->s->wait_semaphores.push_back({ dst_sem->s, 0 });
             } else {
                 // Tier 2: timeline semaphore with CPU wait
