@@ -13911,7 +13911,8 @@ static bool ggml_backend_vk_cpy_tensor_async(ggml_backend_t backend_src, ggml_ba
 
         if (src_buf_ctx->dev_buffer->device != dst_buf->device) {
             // Cross-device copy via shared staging buffer
-            vk_device src_dev = src_buf_ctx->dev_buffer->device;
+            ggml_backend_vk_context * src_ctx = (ggml_backend_vk_context *)backend_src->context;
+            vk_device src_dev = src_ctx->device;
             vk_device dst_dev = ctx->device;
 
             size_t nbytes = ggml_nbytes(src);
@@ -13951,6 +13952,8 @@ static bool ggml_backend_vk_cpy_tensor_async(ggml_backend_t backend_src, ggml_ba
                 // Signal exportable semaphore after hop1, submit without fence
                 hop1_ctx->seqs.back().back().signal_semaphores.push_back({ staging.src_sem, 0 });
                 ggml_vk_submit(hop1_ctx, {});
+                // Track in-flight work so source backend's synchronize drains it
+                src_ctx->submit_pending = true;
 
                 // Export sync_fd from source semaphore
                 vk::SemaphoreGetFdInfoKHR get_fd_info{
@@ -14030,7 +14033,6 @@ static bool ggml_backend_vk_cpy_tensor_async(ggml_backend_t backend_src, ggml_ba
                                           src->data, ggml_nbytes(src));
     }
 
-    GGML_UNUSED(backend_src);
     return false;
 }
 
