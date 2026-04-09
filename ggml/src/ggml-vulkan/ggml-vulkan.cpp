@@ -13393,9 +13393,13 @@ static void ggml_vk_graph_cleanup(ggml_backend_vk_context * ctx) {
         ggml_vk_command_pool_cleanup(ctx->device, ctx->transfer_cmd_pool);
     }
 
+    GGML_LOG_DEBUG("ggml_vulkan: graph_cleanup(%s) binary_semaphore_idx=%zu\n",
+                   ctx->name.c_str(), ctx->binary_semaphore_idx);
     ctx->binary_semaphore_idx = 0;
 
     for (auto& [peer, staging] : ctx->device->peer_staging) {
+        GGML_LOG_DEBUG("ggml_vulkan: graph_cleanup reset buf_idx %zu->0, tl_sem_value=%lu\n",
+                       staging.buf_idx, (unsigned long)staging.tl_sem_value);
         staging.buf_idx = 0;
     }
 
@@ -14031,6 +14035,11 @@ static bool ggml_backend_vk_cpy_tensor_async(ggml_backend_t backend_src, ggml_ba
                                nbytes, sync_fd, (void *)(VkSemaphore)staging.src_sem,
                                (void *)dst_compute_ctx.get());
 
+                if (sync_fd == -1) {
+                    GGML_LOG_WARN("ggml_vulkan: WARNING: getSemaphoreFdKHR returned -1 "
+                                  "(signal already completed before export)\n");
+                }
+
                 // Per-copy dest semaphore (temporary import is consumed per wait)
                 vk_semaphore * dst_sem = ggml_vk_create_binary_semaphore(ctx);
 
@@ -14115,6 +14124,9 @@ static bool ggml_backend_vk_cpy_tensor_async(ggml_backend_t backend_src, ggml_ba
 
 static void ggml_vk_synchronize(ggml_backend_vk_context * ctx) {
     VK_LOG_DEBUG("ggml_vk_synchronize()");
+    GGML_LOG_DEBUG("ggml_vulkan: synchronize(%s) submit_pending=%d compute_ctx_expired=%d\n",
+                   ctx->name.c_str(), (int)ctx->submit_pending,
+                   (int)ctx->compute_ctx.expired());
 
     bool do_transfer = !ctx->compute_ctx.expired();
 
