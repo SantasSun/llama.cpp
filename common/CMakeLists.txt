@@ -33,15 +33,22 @@ else()
     message(WARNING "Git repository not found; to enable automatic generation of build info, make sure Git is installed and the project is a Git repository.")
 endif()
 
-set(TEMPLATE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/build-info.cpp.in")
-set(OUTPUT_FILE   "${CMAKE_CURRENT_BINARY_DIR}/build-info.cpp")
+set(BUILD_INFO_FILE_TMPL "${CMAKE_CURRENT_SOURCE_DIR}/build-info.cpp.in")
+set(BUILD_INFO_FILE_OUT  "${CMAKE_CURRENT_BINARY_DIR}/build-info.cpp")
 
-configure_file(${TEMPLATE_FILE} ${OUTPUT_FILE})
+configure_file(${BUILD_INFO_FILE_TMPL} ${BUILD_INFO_FILE_OUT})
 
 set(TARGET llama-common-base)
-add_library(${TARGET} STATIC ${OUTPUT_FILE})
+add_library(${TARGET} STATIC
+    log.cpp
+    log.h
+    ${BUILD_INFO_FILE_OUT}
+    build-info.h
+)
 
 target_include_directories(${TARGET} PUBLIC .)
+
+target_link_libraries(${TARGET} PUBLIC ggml)
 
 if (BUILD_SHARED_LIBS)
     set_target_properties(${TARGET} PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -80,8 +87,6 @@ add_library(${TARGET}
     json-partial.h
     json-schema-to-grammar.cpp
     llguidance.cpp
-    log.cpp
-    log.h
     ngram-cache.cpp
     ngram-cache.h
     ngram-map.cpp

@@ -1,4 +1,3 @@
-#include "common.h"
 #include "log.h"
 
 #include <chrono>
@@ -60,6 +59,29 @@ static std::vector<const char *> g_col = {
     "",
     "",
 };
+
+static bool tty_can_use_colors() {
+    // Check NO_COLOR environment variable (https://no-color.org/)
+    if (const char * no_color = std::getenv("NO_COLOR")) {
+        if (no_color[0] != '\0') {
+            return false;
+        }
+    }
+
+    // Check TERM environment variable
+    if (const char * term = std::getenv("TERM")) {
+        if (std::strcmp(term, "dumb") == 0) {
+            return false;
+        }
+    }
+
+    // Check if stdout and stderr are connected to a terminal
+    // We check both because log messages can go to either
+    bool stdout_is_tty = isatty(fileno(stdout));
+    bool stderr_is_tty = isatty(fileno(stderr));
+
+    return stdout_is_tty || stderr_is_tty;
+}
 
 struct common_log_entry {
     enum ggml_log_level level;
