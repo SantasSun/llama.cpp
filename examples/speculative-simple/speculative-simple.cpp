@@ -166,7 +166,8 @@ int main(int argc, char ** argv) {
 
     llama_batch batch_tgt = llama_batch_init(llama_n_batch(ctx_tgt), 0, 1);
 
-    size_t n_draft;
+    size_t n_draft = 0;
+
     llama_tokens draft;
     spec_checkpoint spec_ckpt;
 
